@@ -6,29 +6,32 @@ public class third_person_movement : MonoBehaviour
 {
     ControllerInput controls;
     Vector2 inputMovement;
+    Queue<char> buttonBuffer;
+
     public CharacterController controller;
     public Transform cam;
-
     public Transform groundCheck;
-    public float groundDistance = 0.1f;
     public LayerMask groundMask;
-    public float grav = -70f;
+
+    public float groundDistance = 0.1f;
+    public float grav = -100f;
+    public float baseGrav = -100f;
+    public float superGrav = -250f;
     public float jumpHeight = 2f;
     public float dashLength = 2f;
     public float coyoteTime = 0.1f;
-    public float dashTime = 0.8f;
-    float fallingTime, runningTime;
-    Queue<char> buttonBuffer;
+    public float dashTime = 0.5f;
     public float bufferDelay = 0.15f;
 
-    float baseMovementSpeed = 8f;
+    public float baseMovementSpeed = 8f;
     public float movementSpeed = 8f;
     public float runningSpeed = 20f;
 
     public float turnSmoothness = 0.1f;
 
     float turnVel;
-    bool isGrounded, isMoving, isRunning;
+    float fallingTime, runningTime;
+    bool isGrounded, isMoving, isJumping, isRunning;
     Vector3 velocity;
     void Awake()
     {
@@ -37,6 +40,7 @@ public class third_person_movement : MonoBehaviour
         controls.Gameplay.LStick.performed += ctx => inputMovement = ctx.ReadValue<Vector2>();
         controls.Gameplay.LStick.canceled += ctx => inputMovement = Vector2.zero;
         controls.Gameplay.SouthButton.performed += ctx => Jump();
+        controls.Gameplay.SouthButton.canceled += ctx => grav = superGrav;
         controls.Gameplay.EastButton.performed += ctx => isRunning = true;
         controls.Gameplay.EastButton.canceled += ctx => applyDashRun();
     }
@@ -53,12 +57,17 @@ public class third_person_movement : MonoBehaviour
     void Update()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-        if(isGrounded && velocity.y < 0)
+        if(isGrounded)
         {
+            grav = baseGrav;
             fallingTime = 0f;
             velocity.y = -2f;
         }else
         {
+            if(isJumping && controller.velocity.y < 0f)
+            {
+                grav = superGrav;
+            }
             fallingTime += Time.deltaTime;
         }
         if(isRunning){runningTime += Time.deltaTime;}
@@ -99,7 +108,9 @@ public class third_person_movement : MonoBehaviour
     {
         if(fallingTime < coyoteTime)
         {
+            isJumping = true;
             fallingTime = coyoteTime;
+            grav = baseGrav;
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * grav);
         }
     }
