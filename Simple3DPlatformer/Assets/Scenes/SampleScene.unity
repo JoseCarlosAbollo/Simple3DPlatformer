@@ -17197,7 +17197,7 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 2
   m_Height: 1.9
-  m_Radius: 0.35
+  m_Radius: 0.45
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
@@ -17221,11 +17221,11 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 8
-  groundDistance: 0.1
+  groundDistance: 0.05
   grav: -100
   baseGrav: -100
   superGrav: -250
-  jumpHeight: 2
+  jumpHeight: 1.5
   dashLength: 2
   coyoteTime: 0.1
   dashTime: 0.5
@@ -17647,7 +17647,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1917864286}
-  m_LocalRotation: {x: 0.051145647, y: 0.000000031985447, z: -0.0000000016380605, w: 0.9986912}
+  m_LocalRotation: {x: 0.05114565, y: 0.00000003219967, z: -0.0000000016490312, w: 0.9986912}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
