@@ -22,10 +22,13 @@ public class third_person_movement : MonoBehaviour
     public float grav = -100f;
     public float baseGrav = -100f;
     public float superGrav = -250f;
-    public float jumpHeight = 2f;
+    public float jumpHeight = 1.7f;
     public float coyoteTime = 0.1f;
+    public float jumpComboMaxTime = 0.25f;
     float fallingTime, jumpComboTime;
-    bool isGrounded, isJumping;
+    int comboCounter;
+    float[] comboMultipliers = {1f, 1.3f, 2f};
+    bool isGrounded, isJumping, wasJumping;
     /************************************************************************************************************
     DASH VARIABLES
     ************************************************************************************************************/
@@ -36,9 +39,10 @@ public class third_person_movement : MonoBehaviour
     ************************************************************************************************************/
     public CharacterController controller;
     public Transform cam;
-    public float baseMovementSpeed = 8f;
-    public float movementSpeed = 8f;
+    public float baseMovementSpeed = 10f;
+    public float movementSpeed = 10f;
     public float runningSpeed = 20f;
+    public float walkMultiplier;
     float runningTime;
     public float turnSmoothness = 0.1f;
     float turnVel;
@@ -68,27 +72,50 @@ public class third_person_movement : MonoBehaviour
     /************************************************************************************************************
     BEHAVIOUR
         TO DO:
-            - control walking velocity with stick input
             - at least 4 more raycasts in diagonals to improe edge detection
-            - now you can double jump due to coyoteTime after a jump, need to differenciate between falling off an
-            edge and falling from a jump (maybe also checking a jumpsLimit counter)
+            - double jump
+            - crouch
     ************************************************************************************************************/
     void Update()
     { // Using a few raycasts to test if player is grounded
         isGrounded = shootRayCasts();
         if(isGrounded)
-        { // Once player touches Ground, reset all jumping variables but combo
+        { // Once player touches Ground, test if there's a combo in process
+            if(wasJumping) 
+            { // Increase the combo counter when landing except after finishing combo
+                if(comboCounter < 2) comboCounter++;
+                else comboCounter = 0;
+            }
+            // Reset all jumping variables but combo
             grav = baseGrav;
+            wasJumping = false;
             fallingTime = 0f;
             velocity.y = -2f;
-        } else {
-            if(isJumping && controller.velocity.y < 0f) 
-            { // At fall, reset jumping state and apply super gravity (JUICE)
-                isJumping = false;
-                grav = superGrav;
-            } // If falling off an edge or finishing jumping, start counting falling time for coyote time (JUICE)
-            if(!isJumping) fallingTime += Time.deltaTime;
-        }// Running input given, start 
+            // Resolve combo
+            if(comboCounter > 0)
+            { // Start timer to concatenate jumps
+                jumpComboTime += Time.deltaTime;
+                if(jumpComboTime > jumpComboMaxTime)
+                { // Reset combo when jump is missed
+                    comboCounter = 0;
+                    jumpComboTime = 0;
+                }
+            }
+        } else { // In case Player is on the air
+            // Falling
+            if(controller.velocity.y < 0f)
+            {
+                if(isJumping)
+                { // At jumping ending, reset jumping state and apply super gravity (JUICE)
+                    isJumping = false;
+                    wasJumping = true;
+                    grav = superGrav;
+                }else if(!wasJumping)
+                { // If falling off an edge, start counting falling time for coyote time (JUICE)
+                    fallingTime += Time.deltaTime;
+                }
+            }
+        }// Running input given, start counting time
         if(isRunning) { runningTime += Time.deltaTime; }
         // Discerning Running (holding) from dashing (pressing)
         if(runningTime > dashTime)
@@ -102,22 +129,25 @@ public class third_person_movement : MonoBehaviour
         {
             if(buttonBuffer.Peek() == 'S')
             { // Apply jump when requirements are met
-                if(isGrounded || (!isJumping && fallingTime < coyoteTime)) applyJump(); 
+                if(canJump()) applyJump(); 
                 buttonBuffer.Dequeue();
             }
         }
         // Movement and orientation
         Vector3 direction = new Vector3(inputMovement.x, 0f, inputMovement.y).normalized;
         Vector3 moveDir = Vector3.zero;
-        if(direction.magnitude >= 0.1f)
+        if(direction.magnitude > 0f)
         {
             float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
             float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnVel, turnSmoothness);
             transform.rotation = Quaternion.Euler(0f, angle, 0f);
             moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         }
+        // Calculate walking/running multiplier
+        walkMultiplier = 0.4f + (Mathf.Abs(inputMovement.x) + Mathf.Abs(inputMovement.y))/2f;
+        if(walkMultiplier > 1) walkMultiplier = 1;
         // Apply vertical velocity, Input movement and consequential character orientation
-        controller.Move((velocity + moveDir.normalized * movementSpeed) * Time.deltaTime);
+        controller.Move((velocity + moveDir.normalized * movementSpeed * walkMultiplier) * Time.deltaTime);
     }
 
     /************************************************************************************************************
@@ -128,14 +158,13 @@ public class third_person_movement : MonoBehaviour
         buttonBuffer.Enqueue('S');
         Invoke("pullFromBuffer", bufferDelay);
     }
+    bool canJump() { return isGrounded || (!isJumping && !wasJumping && fallingTime < coyoteTime); }
     void applyJump()
     {
-        if(!isJumping && fallingTime < coyoteTime)
-        {
-            isJumping = true;
-            grav = baseGrav;
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * grav);
-        }
+        isJumping = true;
+        grav = baseGrav;
+        velocity.y = Mathf.Sqrt(jumpHeight * comboMultipliers[comboCounter] * -2f * grav);
+        jumpComboTime = 0f;
     }
     /************************************************************************************************************
     DASH OR RUN

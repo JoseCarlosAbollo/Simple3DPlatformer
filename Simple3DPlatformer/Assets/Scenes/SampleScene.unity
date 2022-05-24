@@ -17215,24 +17215,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc7b5221c032e4047b2986d0ef5d5db3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  controller: {fileID: 1875933214}
-  cam: {fileID: 963194228}
+  bufferDelay: 0.15
   groundCheck: {fileID: 2130787887}
   groundMask:
     serializedVersion: 2
     m_Bits: 8
-  groundDistance: 0.05
+  groundDistance: 0.1
   grav: -100
   baseGrav: -100
   superGrav: -250
-  jumpHeight: 1.5
-  dashLength: 2
+  jumpHeight: 1.7
   coyoteTime: 0.1
+  jumpComboMaxTime: 0.25
+  dashLength: 2
   dashTime: 0.5
-  bufferDelay: 0.15
-  baseMovementSpeed: 15
-  movementSpeed: 15
-  runningSpeed: 30
+  controller: {fileID: 1875933214}
+  cam: {fileID: 963194228}
+  baseMovementSpeed: 10
+  movementSpeed: 10
+  runningSpeed: 20
+  walkMultiplier: 0
   turnSmoothness: 0.1
 --- !u!1 &1896915681
 GameObject:
@@ -17647,7 +17649,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1917864286}
-  m_LocalRotation: {x: 0.05114565, y: 0.00000003219967, z: -0.0000000016490312, w: 0.9986912}
+  m_LocalRotation: {x: 0.051145647, y: 0.000000031985447, z: -0.0000000016380605, w: 0.9986912}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
