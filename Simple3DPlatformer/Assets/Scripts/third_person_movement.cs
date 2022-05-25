@@ -15,6 +15,7 @@ public class third_person_movement : MonoBehaviour
     /************************************************************************************************************
     JUMP VARIABLES
     ************************************************************************************************************/
+    [Header("Jump Variables")]
     Vector3 velocity;
     public Transform groundCheck;
     public LayerMask groundMask;
@@ -33,7 +34,7 @@ public class third_person_movement : MonoBehaviour
     DASH VARIABLES
     ************************************************************************************************************/
     public float dashLength = 2f;
-    public float dashTime = 0.5f;
+    public float dashTime = 0.1f;
     /************************************************************************************************************
     WALK/RUN VARIABLES
     ************************************************************************************************************/
@@ -71,9 +72,18 @@ public class third_person_movement : MonoBehaviour
     }
     /************************************************************************************************************
     BEHAVIOUR
+        BUGS:
+            - check bug w inputBuffer (some jumps dont register)
+            - no ground detection in stairs
+            - pressing B while standing increases movementSpeed (you can start running w/o moving)
         TO DO:
-            - at least 4 more raycasts in diagonals to improe edge detection
-            - double jump
+            - custom editor
+            - copy Mario's cam angles, distances and FOV
+            - at least 4 more raycasts in diagonals to improve edge detection
+            - increase FOV while running (in 3rd person? look for examples)
+            - dash
+            - wall run
+            - wall jump
             - crouch
     ************************************************************************************************************/
     void Update()
@@ -119,7 +129,7 @@ public class third_person_movement : MonoBehaviour
         if(isRunning) { runningTime += Time.deltaTime; }
         // Discerning Running (holding) from dashing (pressing)
         if(runningTime > dashTime)
-        { // Apply increase in movement speed gradually
+        { // Apply increase in movement speed (JUICE)
             if(movementSpeed < runningSpeed) { movementSpeed += 10f * Time.deltaTime; }
             else { movementSpeed = runningSpeed; }
         } // Apply gravity to vertical velocity
@@ -149,7 +159,6 @@ public class third_person_movement : MonoBehaviour
         // Apply vertical velocity, Input movement and consequential character orientation
         controller.Move((velocity + moveDir.normalized * movementSpeed * walkMultiplier) * Time.deltaTime);
     }
-
     /************************************************************************************************************
     JUMP
     ************************************************************************************************************/
