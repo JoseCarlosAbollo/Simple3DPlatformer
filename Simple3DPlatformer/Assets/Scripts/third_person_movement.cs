@@ -15,7 +15,6 @@ public class third_person_movement : MonoBehaviour
     /************************************************************************************************************
     JUMP VARIABLES
     ************************************************************************************************************/
-    [Header("Jump Variables")]
     Vector3 velocity;
     public Transform groundCheck;
     public LayerMask groundMask;
@@ -49,6 +48,13 @@ public class third_person_movement : MonoBehaviour
     float turnVel;
     bool isMoving, isRunning;
     /************************************************************************************************************
+    CROUCHING VARIABLES
+    ************************************************************************************************************/
+    public MeshFilter capsule;
+    public float crouchingSpeed = 5f;
+    float crouchScale, crouchHeight;
+    bool isCrouching;
+    /************************************************************************************************************
     INPUT SETUP
     ************************************************************************************************************/
     void Awake()
@@ -58,9 +64,11 @@ public class third_person_movement : MonoBehaviour
         controls.Gameplay.LStick.performed += ctx => inputMovement = ctx.ReadValue<Vector2>();
         controls.Gameplay.LStick.canceled += ctx => inputMovement = Vector2.zero;
         controls.Gameplay.SouthButton.performed += ctx => Jump();
-        controls.Gameplay.SouthButton.canceled += ctx => grav = superGrav;
-        controls.Gameplay.EastButton.performed += ctx => isRunning = true;
-        controls.Gameplay.EastButton.canceled += ctx => applyDashRun();
+        controls.Gameplay.SouthButton.canceled += ctx => CancelJump();
+        controls.Gameplay.EastButton.performed += ctx => Run();
+        controls.Gameplay.EastButton.canceled += ctx => CancelRun();
+        controls.Gameplay.L2.performed += ctx => Crouch();
+        controls.Gameplay.L2.canceled += ctx => cancelCrouch();
     }
     void OnEnable()
     {
@@ -175,10 +183,18 @@ public class third_person_movement : MonoBehaviour
         velocity.y = Mathf.Sqrt(jumpHeight * comboMultipliers[comboCounter] * -2f * grav);
         jumpComboTime = 0f;
     }
+    void CancelJump()
+    {
+        grav = superGrav;
+    }
     /************************************************************************************************************
     DASH OR RUN
     ************************************************************************************************************/
-    void applyDashRun()
+    void Run()
+    {
+        isRunning = true;
+    }
+    void CancelRun()
     {
         if(runningTime <= dashTime){dash();}
         movementSpeed = baseMovementSpeed;
@@ -189,9 +205,25 @@ public class third_person_movement : MonoBehaviour
     {
         runningTime = 0f;
     }
-
-
-
+    /************************************************************************************************************
+    DASH OR RUN
+    ************************************************************************************************************/
+    void Crouch()
+    {
+        isCrouching = true;
+        movementSpeed = crouchingSpeed;
+        crouchScale = capsule.transform.localScale.y;
+        crouchHeight = capsule.transform.localPosition.y;
+        capsule.transform.localScale = new Vector3(capsule.transform.localScale.x, crouchScale/2f, capsule.transform.localScale.z);
+        capsule.transform.localPosition = new Vector3(capsule.transform.localPosition.x, crouchHeight - 0.5f, capsule.transform.localPosition.z);
+    }
+    void cancelCrouch()
+    {
+        isCrouching = false;
+        movementSpeed = baseMovementSpeed;
+        capsule.transform.localScale = new Vector3(capsule.transform.localScale.x, crouchScale, capsule.transform.localScale.z);
+        capsule.transform.localPosition = new Vector3(capsule.transform.localPosition.x, crouchHeight, capsule.transform.localPosition.z);
+    }
     void pullFromBuffer()
     {
         if(buttonBuffer.Count > 0)
