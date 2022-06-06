@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class third_person_movement : MonoBehaviour
+public class playerMovement : MonoBehaviour
 {
-    /************************************************************************************************************
-    IMPUT VARIABLES
-    ************************************************************************************************************/
-    ControllerInput controls;
-    Vector2 inputMovement;
-    Queue<char> buttonBuffer;
-    public float bufferDelay = 0.15f;
+    [SerializeField]
+    playerMain main;
+    [SerializeField]
+    public CharacterController controller;
+    [SerializeField]
+    public Transform cam;
     /************************************************************************************************************
     JUMP VARIABLES
     ************************************************************************************************************/
@@ -37,8 +36,6 @@ public class third_person_movement : MonoBehaviour
     /************************************************************************************************************
     WALK/RUN VARIABLES
     ************************************************************************************************************/
-    public CharacterController controller;
-    public Transform cam;
     public float baseMovementSpeed = 10f;
     public float movementSpeed = 10f;
     public float runningSpeed = 20f;
@@ -55,30 +52,6 @@ public class third_person_movement : MonoBehaviour
     float crouchScale, crouchHeight;
     bool isCrouching;
     /************************************************************************************************************
-    INPUT SETUP
-    ************************************************************************************************************/
-    void Awake()
-    {
-        controls = new ControllerInput();
-        buttonBuffer = new Queue<char>(); // Input buffer queue
-        controls.Gameplay.LStick.performed += ctx => inputMovement = ctx.ReadValue<Vector2>();
-        controls.Gameplay.LStick.canceled += ctx => inputMovement = Vector2.zero;
-        controls.Gameplay.SouthButton.performed += ctx => Jump();
-        controls.Gameplay.SouthButton.canceled += ctx => CancelJump();
-        controls.Gameplay.EastButton.performed += ctx => Run();
-        controls.Gameplay.EastButton.canceled += ctx => CancelRun();
-        controls.Gameplay.L2.performed += ctx => Crouch();
-        controls.Gameplay.L2.canceled += ctx => cancelCrouch();
-    }
-    void OnEnable()
-    {
-        controls.Gameplay.Enable();
-    }
-    void OnDisable()
-    {
-        controls.Gameplay.Disable();
-    }
-    /************************************************************************************************************
     BEHAVIOUR
         BUGS:
             - check bug w inputBuffer (some jumps dont register)
@@ -89,10 +62,11 @@ public class third_person_movement : MonoBehaviour
             - copy Mario's cam angles, distances and FOV
             - at least 4 more raycasts in diagonals to improve edge detection
             - increase FOV while running (in 3rd person? look for examples)
+            - max speed + crouch = slide
+            - crouch + jump = high jump
             - dash
             - wall run
             - wall jump
-            - crouch
     ************************************************************************************************************/
     void Update()
     { // Using a few raycasts to test if player is grounded
@@ -143,16 +117,16 @@ public class third_person_movement : MonoBehaviour
         } // Apply gravity to vertical velocity
         velocity.y += grav/2f * Time.deltaTime;        
         // Check Input Buffer
-        if(buttonBuffer.Count > 0)
+        if(main.inputScript.buttonBuffer.Count > 0)
         {
-            if(buttonBuffer.Peek() == 'S')
+            if(main.inputScript.buttonBuffer.Peek() == 'S')
             { // Apply jump when requirements are met
-                if(canJump()) applyJump(); 
-                buttonBuffer.Dequeue();
+                if(canJump()) applyJump();
+                main.inputScript.buttonBuffer.Dequeue();
             }
         }
         // Movement and orientation
-        Vector3 direction = new Vector3(inputMovement.x, 0f, inputMovement.y).normalized;
+        Vector3 direction = new Vector3(main.inputScript.inputMovement.x, 0f, main.inputScript.inputMovement.y).normalized;
         Vector3 moveDir = Vector3.zero;
         if(direction.magnitude > 0f)
         {
@@ -162,7 +136,7 @@ public class third_person_movement : MonoBehaviour
             moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         }
         // Calculate walking/running multiplier
-        walkMultiplier = 0.4f + (Mathf.Abs(inputMovement.x) + Mathf.Abs(inputMovement.y))/2f;
+        walkMultiplier = 0.4f + (Mathf.Abs(main.inputScript.inputMovement.x) + Mathf.Abs(main.inputScript.inputMovement.y))/2f;
         if(walkMultiplier > 1) walkMultiplier = 1;
         // Apply vertical velocity, Input movement and consequential character orientation
         controller.Move((velocity + moveDir.normalized * movementSpeed * walkMultiplier) * Time.deltaTime);
@@ -172,8 +146,8 @@ public class third_person_movement : MonoBehaviour
     ************************************************************************************************************/
     void Jump()
     {
-        buttonBuffer.Enqueue('S');
-        Invoke("pullFromBuffer", bufferDelay);
+        main.inputScript.buttonBuffer.Enqueue('S');
+        Invoke("pullFromBuffer", main.inputScript.bufferDelay);
     }
     bool canJump() { return isGrounded || (!isJumping && !wasJumping && fallingTime < coyoteTime); }
     void applyJump()
@@ -226,9 +200,9 @@ public class third_person_movement : MonoBehaviour
     }
     void pullFromBuffer()
     {
-        if(buttonBuffer.Count > 0)
+        if(main.inputScript.buttonBuffer.Count > 0)
         {
-            buttonBuffer.Dequeue();
+            main.inputScript.buttonBuffer.Dequeue();
         }
     }
     bool shootRayCasts(){
