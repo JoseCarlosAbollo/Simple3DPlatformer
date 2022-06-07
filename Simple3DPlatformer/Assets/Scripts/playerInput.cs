@@ -35,4 +35,15 @@ public class playerInput : MonoBehaviour
     {
         controls.Gameplay.Disable();
     }
+    public void programDequeue()
+    {
+        Invoke("pullFromBuffer", bufferDelay);
+    }
+    void pullFromBuffer()
+    {
+        if(buttonBuffer.Count > 0)
+        {
+            buttonBuffer.Dequeue();
+        }
+    }
 }

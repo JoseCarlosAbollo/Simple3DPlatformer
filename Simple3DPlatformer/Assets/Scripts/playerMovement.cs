@@ -3,8 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
+
 public class playerMovement : MonoBehaviour
 {
+    /************************************************************************************************************
+    GENERAL
+    ************************************************************************************************************/
     [SerializeField]
     playerMain main;
     [SerializeField]
@@ -15,9 +20,6 @@ public class playerMovement : MonoBehaviour
     JUMP VARIABLES
     ************************************************************************************************************/
     Vector3 velocity;
-    public Transform groundCheck;
-    public LayerMask groundMask;
-    public float groundDistance = 0.1f;
     public float grav = -100f;
     public float baseGrav = -100f;
     public float superGrav = -250f;
@@ -27,7 +29,8 @@ public class playerMovement : MonoBehaviour
     float fallingTime, jumpComboTime;
     int comboCounter;
     float[] comboMultipliers = {1f, 1.3f, 2f};
-    bool isGrounded, isJumping, wasJumping;
+    public bool isGrounded;
+    bool isJumping, wasJumping;
     /************************************************************************************************************
     DASH VARIABLES
     ************************************************************************************************************/
@@ -39,7 +42,7 @@ public class playerMovement : MonoBehaviour
     public float baseMovementSpeed = 10f;
     public float movementSpeed = 10f;
     public float runningSpeed = 20f;
-    public float walkMultiplier;
+    public float walkMultiplier, runMultiplier;
     float runningTime;
     public float turnSmoothness = 0.1f;
     float turnVel;
@@ -61,7 +64,6 @@ public class playerMovement : MonoBehaviour
             - custom editor
             - copy Mario's cam angles, distances and FOV
             - at least 4 more raycasts in diagonals to improve edge detection
-            - increase FOV while running (in 3rd person? look for examples)
             - max speed + crouch = slide
             - crouch + jump = high jump
             - dash
@@ -69,15 +71,10 @@ public class playerMovement : MonoBehaviour
             - wall jump
     ************************************************************************************************************/
     void Update()
-    { // Using a few raycasts to test if player is grounded
-        isGrounded = shootRayCasts();
+    { 
+        // playerCollisions script checks if player is grounded
         if(isGrounded)
         { // Once player touches Ground, test if there's a combo in process
-            if(wasJumping) 
-            { // Increase the combo counter when landing except after finishing combo
-                if(comboCounter < 2) comboCounter++;
-                else comboCounter = 0;
-            }
             // Reset all jumping variables but combo
             grav = baseGrav;
             wasJumping = false;
@@ -94,27 +91,38 @@ public class playerMovement : MonoBehaviour
                 }
             }
         } else { // In case Player is on the air
-            // Falling
             if(controller.velocity.y < 0f)
-            {
+            {// Falling
                 if(isJumping)
                 { // At jumping ending, reset jumping state and apply super gravity (JUICE)
                     isJumping = false;
                     wasJumping = true;
-                    grav = superGrav;
+                    if(comboCounter < 2) comboCounter++;
+                    else comboCounter = 0;
                 }else if(!wasJumping)
                 { // If falling off an edge, start counting falling time for coyote time (JUICE)
                     fallingTime += Time.deltaTime;
                 }
+                grav = superGrav;
             }
         }// Running input given, start counting time
         if(isRunning) { runningTime += Time.deltaTime; }
         // Discerning Running (holding) from dashing (pressing)
         if(runningTime > dashTime)
         { // Apply increase in movement speed (JUICE)
+            if(runMultiplier < 2) { runMultiplier += 0.2f; }
+            else { runMultiplier = 2; }
+        } // Apply gravity to vertical velocity
+        
+        /*if(isRunning) { runningTime += Time.deltaTime; }
+        // Discerning Running (holding) from dashing (pressing)
+        if(runningTime > dashTime)
+        { // Apply increase in movement speed (JUICE)
             if(movementSpeed < runningSpeed) { movementSpeed += 10f * Time.deltaTime; }
             else { movementSpeed = runningSpeed; }
-        } // Apply gravity to vertical velocity
+        }*/
+        
+        
         velocity.y += grav/2f * Time.deltaTime;        
         // Check Input Buffer
         if(main.inputScript.buttonBuffer.Count > 0)
@@ -136,8 +144,12 @@ public class playerMovement : MonoBehaviour
             moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         }
         // Calculate walking/running multiplier
-        walkMultiplier = 0.4f + (Mathf.Abs(main.inputScript.inputMovement.x) + Mathf.Abs(main.inputScript.inputMovement.y))/2f;
-        if(walkMultiplier > 1) walkMultiplier = 1;
+        if(!isRunning)
+        {
+            walkMultiplier = 0.4f + (Mathf.Abs(main.inputScript.inputMovement.x) + Mathf.Abs(main.inputScript.inputMovement.y))/2f;
+            if(walkMultiplier > 1) walkMultiplier = 1;
+        }
+        else walkMultiplier = 1;
         // Apply vertical velocity, Input movement and consequential character orientation
         controller.Move((velocity + moveDir.normalized * movementSpeed * walkMultiplier) * Time.deltaTime);
     }
@@ -147,9 +159,10 @@ public class playerMovement : MonoBehaviour
     void Jump()
     {
         main.inputScript.buttonBuffer.Enqueue('S');
-        Invoke("pullFromBuffer", main.inputScript.bufferDelay);
+        main.inputScript.programDequeue();
     }
-    bool canJump() { return isGrounded || (!isJumping && !wasJumping && fallingTime < coyoteTime); }
+    bool canJump() { return isGrounded || justFellFromEdge(); }
+    bool justFellFromEdge(){ return (!isJumping && !wasJumping && fallingTime < coyoteTime); }
     void applyJump()
     {
         isJumping = true;
@@ -171,7 +184,7 @@ public class playerMovement : MonoBehaviour
     void CancelRun()
     {
         if(runningTime <= dashTime){dash();}
-        movementSpeed = baseMovementSpeed;
+        runMultiplier = 1;
         isRunning = false;
         runningTime = 0f;
     }
@@ -197,50 +210,5 @@ public class playerMovement : MonoBehaviour
         movementSpeed = baseMovementSpeed;
         capsule.transform.localScale = new Vector3(capsule.transform.localScale.x, crouchScale, capsule.transform.localScale.z);
         capsule.transform.localPosition = new Vector3(capsule.transform.localPosition.x, crouchHeight, capsule.transform.localPosition.z);
-    }
-    void pullFromBuffer()
-    {
-        if(main.inputScript.buttonBuffer.Count > 0)
-        {
-            main.inputScript.buttonBuffer.Dequeue();
-        }
-    }
-    bool shootRayCasts(){
-        Vector3 posRight = (groundCheck.position + Vector3.right*controller.radius);
-        Vector3 posLeft = (groundCheck.position + Vector3.left*controller.radius);
-        Vector3 posBack = (groundCheck.position + Vector3.back*controller.radius);
-        Vector3 posFront = (groundCheck.position + Vector3.forward*controller.radius);
-
-        return 
-        Physics.Raycast(groundCheck.position, Vector3.down, 0.05f) ||
-        Physics.Raycast(posRight, Vector3.down, 0.05f) ||
-        Physics.Raycast(posLeft, Vector3.down, 0.05f) ||
-        Physics.Raycast(posBack, Vector3.down, 0.05f) ||
-        Physics.Raycast(posFront, Vector3.down, 0.05f);
-    }
-    /************************************************************************************************************
-    GIZMOS
-    ************************************************************************************************************/
-    void OnDrawGizmos()
-    {
-        /*
-        Vector3 posRight = (groundCheck.position + Vector3.right*controller.radius);
-        Vector3 posLeft = (groundCheck.position + Vector3.left*controller.radius);
-        Vector3 posBack = (groundCheck.position + Vector3.back*controller.radius);
-        Vector3 posFront = (groundCheck.position + Vector3.forward*controller.radius);
-        Vector3 origin, to;
-        origin = posRight;
-        to = origin + Vector3.down*0.05f;
-        Gizmos.DrawLine(origin, to);
-        origin = posLeft;
-        to = origin + Vector3.down*0.05f;
-        Gizmos.DrawLine(origin, to);
-        origin = posBack;
-        to = origin + Vector3.down*0.05f;
-        Gizmos.DrawLine(origin, to);
-        origin = posFront;
-        to = origin + Vector3.down*0.05f;
-        Gizmos.DrawLine(origin, to);
-        */
     }
 }
